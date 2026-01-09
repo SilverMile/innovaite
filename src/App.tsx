@@ -1,14 +1,21 @@
 // @ts-ignore
 import Navvybar from './navbar.jsx';
 import './App.css';
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import MapView from "./components/mapView";
 import UserLogin from "./components/UserLogin";
-import type { StoredUser } from "./utils/userStorage";
+import { getStoredUser, type StoredUser } from "./utils/userStorage";
 
 function App(): React.JSX.Element {
   const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
+
+  useEffect(() => {
+    const existingUser = getStoredUser();
+    if (existingUser) {
+      setCurrentUser(existingUser);
+    }
+  }, []);
 
   return (
     <Router>
@@ -31,7 +38,6 @@ function App(): React.JSX.Element {
                     <h1 style={{ margin: "0", padding: "0.5rem 0", textAlign: "center", fontSize: "1.5rem" }}>
                       Environmental Hazard Map
                     </h1>
-                    <UserLogin onUserSet={setCurrentUser} />
                   </div>
                   <div style={{ flex: 1, position: "relative" }}>
                     <MapView currentUser={currentUser} />
@@ -39,7 +45,7 @@ function App(): React.JSX.Element {
                 </div>
               }
             />
-
+            <Route path="/login" element={<UserLogin onUserSet={setCurrentUser} />} />
           </Routes>
         </div>
       </div>
