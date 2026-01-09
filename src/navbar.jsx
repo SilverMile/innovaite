@@ -1,5 +1,6 @@
 import React from 'react';
-import './navbar.css';
+import { Link } from 'react-router-dom';
+import './Navbar.css';
 import userIcon from './assets/user-icon.svg';
 
 
@@ -7,25 +8,24 @@ const Navvybar = () => {
   return (
     <nav className="Navvybar">
       <div className="navbar-left">
-        <a href="/" className="logo">
+        <Link to="/" className="logo">
           Dihvik Dihtwani
-        </a>
+        </Link>
       </div>
       <div className="navbar-center">
         <ul className="nav-links">
           <li>
-            <a href="/map">Map</a>
+            <Link to="/map">Map</Link>
           </li>
         </ul>
       </div>
       <div className="navbar-right">
-        <a href="/points" className="user-points">
+        <Link to="/points" className="user-points">
           <span className="points">0</span>
-        </a>
-        <a href="/account" className="user-icon">
-  <img src={userIcon} alt="User Icon" />
-</a>
-
+        </Link>
+        <Link to="/account" className="user-icon">
+          <img src={userIcon} alt="User Icon" />
+        </Link>
       </div>
     </nav>
   );

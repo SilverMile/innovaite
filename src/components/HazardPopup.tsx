@@ -17,7 +17,6 @@ export default function HazardPopup({
   onClose,
 }: HazardPopupProps): React.JSX.Element {
   const isClaimedByMe = hazard.claimed_by === currentUserId;
-  const isCompleted = hazard.status === "completed";
   const canClaim = hazard.status === "open" && currentUserId !== null;
   const canComplete = hazard.status === "claimed" && isClaimedByMe;
 
