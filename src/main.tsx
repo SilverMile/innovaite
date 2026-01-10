@@ -17,9 +17,14 @@ interface WasteItem {
 type Screen = 'home' | 'scanner' | 'results';
 
 // Gemini AI Function
+// Gemini AI Function - GEMINI 2.0 FLASH (LATEST)
 const identifyWaste = async (imageBase64: string): Promise<WasteItem[]> => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    // Use Gemini 2.0 Flash - the newest model
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.0-flash-exp'
+    });
+
     const prompt = `Analyze this image and identify all waste items visible. 
     For each item, provide:
     1. Item name
@@ -37,31 +42,35 @@ const identifyWaste = async (imageBase64: string): Promise<WasteItem[]> => {
     
     Return ONLY the JSON array, no other text.`;
 
-    const imagePart = {
-      inlineData: {
-        data: imageBase64.split(',')[1] || imageBase64,
-        mimeType: 'image/jpeg',
+    // Generate content with image
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: imageBase64.split(',')[1],
+          mimeType: "image/jpeg",
+        },
       },
-    };
+    ]);
 
-    const result = await model.generateContent([prompt, imagePart]);
-    const response = await result.response;
+    const response = result.response;
     const text = response.text();
     
-    console.log('AI Response:', text);
+    console.log('✅ AI Response:', text);
     
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    // Extract JSON array from response
+    const jsonMatch = text.match(/\[[\s\S]*?\]/);
     if (jsonMatch) {
-      const items = JSON.parse(jsonMatch[0]);
-      return items;
+      return JSON.parse(jsonMatch[0]);
     }
     
-    throw new Error('Could not parse AI response');
+    throw new Error('No valid JSON array in AI response');
   } catch (error) {
-    console.error('Error identifying waste:', error);
+    console.error('❌ Error identifying waste:', error);
     throw error;
   }
 };
+
 
 // Main App Component
 function App() {
