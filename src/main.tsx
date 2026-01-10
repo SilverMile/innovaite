@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
+import Leaderboard from './components/Leaderboard'
 
 // Types
 interface WasteItem {
@@ -9,7 +10,7 @@ interface WasteItem {
   instruction: string;
 }
 
-type Screen = 'home' | 'scanner' | 'results';
+type Screen = 'home' | 'scanner' | 'results' | 'leaderboard';
 
 // Perplexity API with Sonar Model
 const identifyWaste = async (imageBase64: string): Promise<WasteItem[]> => {
@@ -248,6 +249,21 @@ function App() {
     return () => stopCamera();
   }, [screen]);
 
+  // LEADERBOARD SCREEN
+  if (screen === 'leaderboard') {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+        <div style={{ padding: '20px', background: 'white', borderBottom: '2px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#2d5016', margin: 0 }}>WASTEless</h1>
+          <button onClick={() => setScreen('home')} style={{ background: '#e0e0e0', border: 'none', padding: '12px 24px', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', color: '#333', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = '#d0d0d0'} onMouseLeave={(e) => e.currentTarget.style.background = '#e0e0e0'}>
+            ← Back to Home
+          </button>
+        </div>
+        <Leaderboard />
+      </div>
+    );
+  }
+
   // HOME SCREEN
   if (screen === 'home') {
     return (
@@ -255,8 +271,13 @@ function App() {
         <div style={{ width: '100%', maxWidth: '600px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
             <h1 style={{ fontSize: '42px', fontWeight: 'bold', color: '#2d5016', margin: 0 }}>WASTEless</h1>
-            <div style={{ background: 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)', padding: '12px 20px', borderRadius: '25px', fontSize: '22px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)' }}>
-              ⭐ {points}
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <button onClick={() => setScreen('leaderboard')} style={{ background: 'linear-gradient(135deg, #2d5016 0%, #3d6b1f 100%)', padding: '10px 18px', borderRadius: '20px', fontSize: '16px', fontWeight: 'bold', color: 'white', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(45, 80, 22, 0.3)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                🏆 Leaderboard
+              </button>
+              <div style={{ background: 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)', padding: '12px 20px', borderRadius: '25px', fontSize: '22px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)' }}>
+                ⭐ {points}
+              </div>
             </div>
           </div>
 
