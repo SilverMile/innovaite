@@ -19,8 +19,7 @@ type Screen = 'home' | 'scanner' | 'results';
 // Gemini AI Function
 const identifyWaste = async (imageBase64: string): Promise<WasteItem[]> => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
     const prompt = `Analyze this image and identify all waste items visible. 
     For each item, provide:
     1. Item name
