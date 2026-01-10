@@ -364,7 +364,7 @@ function App() {
             return (
               <div key={index} onClick={() => toggleItem(index)} style={{ background: isChecked ? 'linear-gradient(135deg, #e8f5e9 0%, #f1f8f4 100%)' : 'white', padding: '24px', borderRadius: '20px', marginBottom: '16px', boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)', cursor: 'pointer', border: isChecked ? '3px solid #27ae60' : '3px solid transparent', transition: 'all 0.3s', transform: 'scale(1)' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '16px', color: '#999', fontWeight: 'bold' }}>#{index + 1}</span>
+                  <span style={{ fontSize: '15px', color: '#999', fontWeight: 'bold' }}>#{index + 1}</span>
                   {isChecked && <span style={{ fontSize: '32px', color: '#27ae60' }}>✓</span>}
                 </div>
                 
