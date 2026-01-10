@@ -272,12 +272,9 @@ function App() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
             <h1 style={{ fontSize: '42px', fontWeight: 'bold', color: '#2d5016', margin: 0 }}>WASTEless</h1>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <button onClick={() => setScreen('leaderboard')} style={{ background: 'linear-gradient(135deg, #2d5016 0%, #3d6b1f 100%)', padding: '10px 18px', borderRadius: '20px', fontSize: '16px', fontWeight: 'bold', color: 'white', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(45, 80, 22, 0.3)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                🏆 Leaderboard
-              </button>
-              <div style={{ background: 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)', padding: '12px 20px', borderRadius: '25px', fontSize: '22px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)' }}>
+              <button onClick={() => setScreen('leaderboard')} style={{ background: 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)', padding: '12px 20px', borderRadius: '25px', fontSize: '22px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)' }}>
                 ⭐ {points}
-              </div>
+              </button>
             </div>
           </div>
 
