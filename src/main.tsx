@@ -11,7 +11,7 @@ interface WasteItem {
 
 type Screen = 'home' | 'scanner' | 'results';
 
-// Perplexity API - Improved Prompt
+// Perplexity API with Sonar Model
 const identifyWaste = async (imageBase64: string): Promise<WasteItem[]> => {
   try {
     const API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY as string;
@@ -20,40 +20,47 @@ const identifyWaste = async (imageBase64: string): Promise<WasteItem[]> => {
       throw new Error('Perplexity API key not found');
     }
 
-    const prompt = `You are an expert waste management AI system for Dubai, UAE.
+    const prompt = `You are a precise waste identification AI for Dubai, UAE. Analyze this image CAREFULLY.
 
-TASK: Analyze this image and identify ALL visible waste items.
+CRITICAL INSTRUCTIONS:
+1. Look at the ACTUAL items in the image - don't guess or assume
+2. Be SPECIFIC about materials (e.g., "Glass Bottle" not "Can", "Plastic Straw" not generic "Straw")
+3. Only identify items you can CLEARLY see
+4. If you see a glass item, say GLASS not plastic/aluminum
+5. If you see a straw, identify the MATERIAL (plastic/paper/metal)
+6. Count each DISTINCT item separately
 
-For EACH item found, provide:
-1. Specific item name (e.g., "PET Plastic Water Bottle" not just "bottle")
-2. Correct disposal category: must be ONE of these: recyclable, organic, hazardous, landfill
-3. Detailed disposal instruction specific to Dubai's waste management system
+MATERIAL IDENTIFICATION:
+- GLASS: transparent, often green/brown/clear bottles and jars
+- PLASTIC: opaque or translucent, often has recycling symbols, bottles/containers
+- ALUMINUM: metallic, shiny cans for beverages
+- CARDBOARD: brown/tan paper material, boxes
+- PAPER: white/colored sheets, newspapers
+- ORGANIC: food scraps, peels, leftovers
 
 DUBAI WASTE CATEGORIES:
-- RECYCLABLE: Blue bin - plastic bottles, aluminum cans, cardboard, paper, glass
-- ORGANIC: Green bin - food waste, fruit/vegetable scraps, garden waste
-- HAZARDOUS: Red container - batteries, electronics, chemicals, light bulbs
-- LANDFILL: Black bin - contaminated items, mixed materials, non-recyclables
+- recyclable: plastic bottles (PET/HDPE), aluminum cans, cardboard, paper, glass bottles/jars
+- organic: food waste, fruit/vegetable scraps, garden waste, compostables
+- hazardous: batteries, electronics, chemicals, light bulbs, aerosol cans
+- landfill: contaminated items, mixed materials, broken ceramics, styrofoam, plastic straws
 
-RESPONSE FORMAT: Return ONLY a valid JSON array, no markdown, no explanation:
+RESPONSE FORMAT (JSON array only):
 [
   {
-    "name": "PET Plastic Water Bottle",
+    "name": "Green Glass Beverage Bottle",
     "category": "recyclable",
-    "instruction": "Remove cap and label, rinse bottle thoroughly, crush to save space. Place in blue recycling bin. Accepted at all Dubai Municipality collection points."
+    "instruction": "Remove cap and rinse. Glass is 100% recyclable. Place in blue recycling bin or take to glass recycling point. Bee'ah accepts all glass colors."
   },
   {
-    "name": "Banana Peel",
-    "category": "organic",
-    "instruction": "Place in green organic waste bin. Dubai Municipality processes organic waste into compost for city landscaping projects."
+    "name": "Single-Use Plastic Straw",
+    "category": "landfill",
+    "instruction": "Plastic straws are not recyclable in Dubai. Place in black general waste bin. Consider switching to reusable metal or paper straws."
   }
 ]
 
-IMPORTANT: 
-- Identify between 2-6 items depending on what's visible
-- Be specific with item names
-- Provide actionable Dubai-specific disposal instructions
-- Return ONLY the JSON array, nothing else`;
+ANALYZE THE IMAGE NOW. Return ONLY the JSON array with items you ACTUALLY SEE. No markdown formatting, just the raw JSON array.`;
+
+    console.log('🔄 Calling Perplexity API...');
 
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
@@ -62,7 +69,7 @@ IMPORTANT:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'sonar-vision',
+        model: 'sonar',
         messages: [
           {
             role: 'user',
@@ -81,21 +88,20 @@ IMPORTANT:
           }
         ],
         max_tokens: 1500,
-        temperature: 0.1,
-        top_p: 0.9
+        temperature: 0.1
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Perplexity API Error:', errorText);
+      console.error('❌ Perplexity API Error:', errorText);
       throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
     const text = data.choices[0].message.content;
     
-    console.log('✅ Perplexity AI Response:', text);
+    console.log('✅ Perplexity Response:', text);
     
     // Extract JSON - handle markdown code blocks
     let jsonText = text;
@@ -128,49 +134,12 @@ IMPORTANT:
       throw new Error('No valid items in response');
     }
     
+    console.log('✅ Valid items found:', validItems.length);
     return validItems;
     
   } catch (error: any) {
     console.error('❌ Error identifying waste:', error);
-    
-    // Fallback demo data if API fails
-    console.warn('⚠️ Using fallback demo data');
-    const demoItems = [
-      { 
-        name: 'PET Plastic Water Bottle', 
-        category: 'recyclable' as const,
-        instruction: 'Remove cap and label, rinse thoroughly, crush to save space. Place in blue recycling bin. Accepted at all Dubai Municipality collection points and Bee\'ah facilities.' 
-      },
-      { 
-        name: 'Aluminum Beverage Can', 
-        category: 'recyclable' as const,
-        instruction: 'Rinse can to remove residue, crush if possible to save space. Place in blue recycling bin. Aluminum is 100% recyclable and highly valuable.' 
-      },
-      { 
-        name: 'Cardboard Packaging', 
-        category: 'recyclable' as const,
-        instruction: 'Flatten cardboard boxes, keep dry and clean. Remove any plastic tape or labels. Place in blue recycling bin. Collected twice weekly by Dubai Municipality.' 
-      },
-      { 
-        name: 'Food Waste & Scraps', 
-        category: 'organic' as const,
-        instruction: 'Place all food scraps, fruit peels, and vegetable waste in green organic bin. Dubai Municipality processes organic waste into nutrient-rich compost for city parks.' 
-      },
-      { 
-        name: 'Used AA Battery', 
-        category: 'hazardous' as const,
-        instruction: 'Never dispose in regular bins. Take to Bee\'ah e-waste collection center or battery drop-off points at malls. Contains toxic heavy metals harmful to environment.' 
-      },
-      {
-        name: 'Mixed Paper (Office Paper)',
-        category: 'recyclable' as const,
-        instruction: 'Remove plastic sleeves and staples. Keep paper clean and dry. Place in blue recycling bin. Shredded paper accepted in clear bags.'
-      }
-    ];
-    
-    // Return random 3-5 items to simulate real detection
-    const shuffled = demoItems.sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 3 + Math.floor(Math.random() * 3));
+    throw error;
   }
 };
 
@@ -348,7 +317,7 @@ function App() {
             <p style={{ fontSize: '14px', marginTop: '8px', color: '#aaa' }}>This may take 5-10 seconds</p>
           </div>
         ) : (
-          <button onClick={captureImage} style={{ position: 'fixed', bottom: '50px', left: '50%', transform: 'translateX(-50%)', width: '90px', height: '90px', borderRadius: '50%', background: 'white', border: '5px solid rgba(255, 255, 255, 0.3)', cursor: 'pointer', padding: 0, transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(1)'}>
+          <button onClick={captureImage} style={{ position: 'fixed', bottom: '50px', left: '50%', transform: 'translateX(-50%)', width: '90px', height: '90px', borderRadius: '50%', background: 'white', border: '5px solid rgba(255, 255, 255, 0.3)', cursor: 'pointer', padding: 0, transition: 'transform 0.2s' }} onMouseDown={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(0.95)'} onMouseUp={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(1)'}>
             <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: '#2d5016', margin: '5px' }} />
           </button>
         )}
