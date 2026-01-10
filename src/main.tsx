@@ -1,6 +1,11 @@
 import React, { useState, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import './index.css'
+
+// Initialize Gemini
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string;
+const genAI = new GoogleGenerativeAI(API_KEY);
 
 // Types
 interface WasteItem {
@@ -10,6 +15,54 @@ interface WasteItem {
 }
 
 type Screen = 'home' | 'scanner' | 'results';
+
+// Gemini AI Function
+const identifyWaste = async (imageBase64: string): Promise<WasteItem[]> => {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    const prompt = `Analyze this image and identify all waste items visible. 
+    For each item, provide:
+    1. Item name
+    2. Bin category: recyclable, organic, hazardous, or landfill
+    3. Brief disposal instruction for Dubai, UAE
+    
+    Format response as valid JSON array only:
+    [
+      {
+        "name": "Plastic Bottle",
+        "category": "recyclable",
+        "instruction": "Remove cap and rinse before recycling"
+      }
+    ]
+    
+    Return ONLY the JSON array, no other text.`;
+
+    const imagePart = {
+      inlineData: {
+        data: imageBase64.split(',')[1] || imageBase64,
+        mimeType: 'image/jpeg',
+      },
+    };
+
+    const result = await model.generateContent([prompt, imagePart]);
+    const response = await result.response;
+    const text = response.text();
+    
+    console.log('AI Response:', text);
+    
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      const items = JSON.parse(jsonMatch[0]);
+      return items;
+    }
+    
+    throw new Error('Could not parse AI response');
+  } catch (error) {
+    console.error('Error identifying waste:', error);
+    throw error;
+  }
+};
 
 // Main App Component
 function App() {
@@ -34,7 +87,7 @@ function App() {
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
+        video: { facingMode: 'environment', width: 1280, height: 720 } 
       });
       setVideoStream(stream);
       if (videoRef.current) {
@@ -69,20 +122,22 @@ function App() {
     stopCamera();
     
     try {
-      // Simulate AI processing (replace with real Gemini API call later)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // REAL GEMINI AI CALL
+      const identifiedItems = await identifyWaste(imageBase64);
       
-      const mockItems: WasteItem[] = [
-        { name: 'Plastic Bottle', category: 'recyclable', instruction: 'Remove cap and rinse before recycling' },
-        { name: 'Banana Peel', category: 'organic', instruction: 'Compostable organic waste' },
-        { name: 'Battery', category: 'hazardous', instruction: 'Take to nearest e-waste collection point' }
-      ];
+      if (identifiedItems.length === 0) {
+        alert('No items detected. Please try again with better lighting.');
+        setIsProcessing(false);
+        setScreen('home');
+        return;
+      }
       
-      setItems(mockItems);
+      setItems(identifiedItems);
       setCheckedItems({});
       setScreen('results');
     } catch (error) {
-      alert('Error identifying items. Please try again.');
+      alert('Error identifying items. Please check your API key and try again.');
+      console.error(error);
       setScreen('home');
     } finally {
       setIsProcessing(false);
@@ -101,7 +156,6 @@ function App() {
     setScreen('home');
   };
 
-  // When entering scanner screen
   React.useEffect(() => {
     if (screen === 'scanner') {
       startCamera();
@@ -112,13 +166,7 @@ function App() {
   // HOME SCREEN
   if (screen === 'home') {
     return (
-      <div style={{ 
-        minHeight: '100vh', 
-        background: '#f5f5f5', 
-        padding: '20px',
-        display: 'flex',
-        justifyContent: 'center'
-      }}>
+      <div style={{ minHeight: '100vh', background: '#f5f5f5', padding: '20px', display: 'flex', justifyContent: 'center' }}>
         <div style={{ width: '100%', maxWidth: '600px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
             <h1 style={{ fontSize: '42px', fontWeight: 'bold', color: '#2d5016', margin: 0 }}>WASTEless</h1>
@@ -170,7 +218,8 @@ function App() {
         {isProcessing ? (
           <div style={{ position: 'fixed', bottom: '50px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', color: 'white', background: 'rgba(0, 0, 0, 0.8)', padding: '24px 32px', borderRadius: '16px' }}>
             <div style={{ width: '50px', height: '50px', border: '5px solid rgba(255, 255, 255, 0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
-            <p>Identifying items...</p>
+            <p>🤖 AI is analyzing...</p>
+            <p style={{ fontSize: '14px', marginTop: '8px' }}>This may take 5-10 seconds</p>
           </div>
         ) : (
           <button onClick={captureImage} style={{ position: 'fixed', bottom: '50px', left: '50%', transform: 'translateX(-50%)', width: '90px', height: '90px', borderRadius: '50%', background: 'white', border: '5px solid rgba(255, 255, 255, 0.3)', cursor: 'pointer', padding: 0 }}>
