@@ -22,7 +22,7 @@ const identifyWaste = async (imageBase64: string): Promise<WasteItem[]> => {
   try {
     // Use Gemini 2.0 Flash - the newest model
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.0-flash-exp'
+      model: 'gemini-2.0-flash'
     });
 
     const prompt = `Analyze this image and identify all waste items visible. 
