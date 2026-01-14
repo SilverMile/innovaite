@@ -2,8 +2,7 @@ import React, { useState, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
 import Leaderboard from './components/Leaderboard'
-import Analytics from './components/Analytics'
-
+import Analytics from './components/analytics'
 // Types
 interface WasteItem {
   name: string;
