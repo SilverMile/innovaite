@@ -2,17 +2,43 @@ import React, { useState, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
 import Leaderboard from './components/Leaderboard'
+import Analytics from './components/Analytics'
 
 // Types
 interface WasteItem {
   name: string;
   category: 'recyclable' | 'organic' | 'hazardous' | 'landfill';
   instruction: string;
+  energySaved?: number; // kWh saved
 }
 
-type Screen = 'home' | 'scanner' | 'results' | 'leaderboard';
+type Screen = 'home' | 'scanner' | 'results' | 'leaderboard' | 'analytics';
 
-// Perplexity API with Sonar Model
+// Energy savings data (kWh per kg) based on EPA and industry data
+const ENERGY_SAVINGS: Record<string, number> = {
+  'aluminum': 14.0, // 14 kWh per kg [web:89][web:93]
+  'plastic': 5.6, // 5.6 kWh per kg [web:88]
+  'glass': 0.3, // 0.3 kWh per kg [web:89]
+  'paper': 4.1, // 4.1 kWh per kg [web:96]
+  'cardboard': 4.1,
+  'steel': 1.4, // 1.4 kWh per kg [web:89]
+  'organic': 0.5, // Composting energy offset
+  'default': 2.0
+};
+
+const calculateEnergySaved = (itemName: string): number => {
+  const name = itemName.toLowerCase();
+  if (name.includes('aluminum') || name.includes('aluminium') || name.includes('can')) return ENERGY_SAVINGS.aluminum;
+  if (name.includes('plastic') || name.includes('bottle') || name.includes('pet')) return ENERGY_SAVINGS.plastic;
+  if (name.includes('glass')) return ENERGY_SAVINGS.glass;
+  if (name.includes('paper') || name.includes('newspaper')) return ENERGY_SAVINGS.paper;
+  if (name.includes('cardboard') || name.includes('box')) return ENERGY_SAVINGS.cardboard;
+  if (name.includes('steel') || name.includes('metal')) return ENERGY_SAVINGS.steel;
+  if (name.includes('organic') || name.includes('food')) return ENERGY_SAVINGS.organic;
+  return ENERGY_SAVINGS.default;
+};
+
+// Perplexity API
 const identifyWaste = async (imageBase64: string): Promise<WasteItem[]> => {
   try {
     const API_KEY = import.meta.env.VITE_PERPLEXITY_API_KEY as string;
@@ -27,13 +53,11 @@ CRITICAL INSTRUCTIONS:
 1. Look at the ACTUAL items in the image - don't guess or assume
 2. Be SPECIFIC about materials (e.g., "Glass Bottle" not "Can", "Plastic Straw" not generic "Straw")
 3. Only identify items you can CLEARLY see
-4. If you see a glass item, say GLASS not plastic/aluminum
-5. If you see a straw, identify the MATERIAL (plastic/paper/metal)
-6. Count each DISTINCT item separately
+4. Count each DISTINCT item separately
 
 MATERIAL IDENTIFICATION:
 - GLASS: transparent, often green/brown/clear bottles and jars
-- PLASTIC: opaque or translucent, often has recycling symbols, bottles/containers
+- PLASTIC: opaque or translucent, bottles/containers (look for PET/HDPE symbols)
 - ALUMINUM: metallic, shiny cans for beverages
 - CARDBOARD: brown/tan paper material, boxes
 - PAPER: white/colored sheets, newspapers
@@ -50,16 +74,11 @@ RESPONSE FORMAT (JSON array only):
   {
     "name": "Green Glass Beverage Bottle",
     "category": "recyclable",
-    "instruction": "Remove cap and rinse. Glass is 100% recyclable. Place in blue recycling bin or take to glass recycling point. Bee'ah accepts all glass colors."
-  },
-  {
-    "name": "Single-Use Plastic Straw",
-    "category": "landfill",
-    "instruction": "Plastic straws are not recyclable in Dubai. Place in black general waste bin. Consider switching to reusable metal or paper straws."
+    "instruction": "Remove cap and rinse. Glass is 100% recyclable. Place in blue recycling bin. Bee'ah accepts all glass colors. Saves 0.3 kWh of energy per kg recycled."
   }
 ]
 
-ANALYZE THE IMAGE NOW. Return ONLY the JSON array with items you ACTUALLY SEE. No markdown formatting, just the raw JSON array.`;
+ANALYZE THE IMAGE NOW. Return ONLY the JSON array. No markdown, just raw JSON.`;
 
     console.log('🔄 Calling Perplexity API...');
 
@@ -96,7 +115,7 @@ ANALYZE THE IMAGE NOW. Return ONLY the JSON array with items you ACTUALLY SEE. N
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Perplexity API Error:', errorText);
-      throw new Error(`API Error ${response.status}: ${errorText}`);
+      throw new Error(`API Error ${response.status}`);
     }
 
     const data = await response.json();
@@ -104,7 +123,7 @@ ANALYZE THE IMAGE NOW. Return ONLY the JSON array with items you ACTUALLY SEE. N
     
     console.log('✅ Perplexity Response:', text);
     
-    // Extract JSON - handle markdown code blocks
+    // Extract JSON
     let jsonText = text;
     const codeBlockMatch = text.match(/```(?:json)?\s*(\[[\s\S]*?\])\s*```/);
     if (codeBlockMatch) {
@@ -118,48 +137,55 @@ ANALYZE THE IMAGE NOW. Return ONLY the JSON array with items you ACTUALLY SEE. N
     
     const items = JSON.parse(jsonText);
     
-    // Validate response
     if (!Array.isArray(items) || items.length === 0) {
-      throw new Error('No items found in response');
+      throw new Error('No items found');
     }
     
-    // Validate each item has required fields
     const validItems = items.filter(item => 
       item.name && 
       item.category && 
       ['recyclable', 'organic', 'hazardous', 'landfill'].includes(item.category) &&
       item.instruction
-    );
+    ).map(item => ({
+      ...item,
+      energySaved: calculateEnergySaved(item.name)
+    }));
     
     if (validItems.length === 0) {
-      throw new Error('No valid items in response');
+      throw new Error('No valid items');
     }
     
-    console.log('✅ Valid items found:', validItems.length);
     return validItems;
     
   } catch (error: any) {
-    console.error('❌ Error identifying waste:', error);
+    console.error('❌ Error:', error);
     throw error;
   }
 };
 
-// Main App Component
+// Main App
 function App() {
   const [screen, setScreen] = useState<Screen>('home');
   const [items, setItems] = useState<WasteItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [points, setPoints] = useState(0);
+  const [points, setPoints] = useState(parseInt(localStorage.getItem('wasteless_points') || '0'));
+  const [totalEnergySaved, setTotalEnergySaved] = useState(parseFloat(localStorage.getItem('wasteless_energy') || '0'));
   const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({});
+  const [selectedItem, setSelectedItem] = useState<number | null>(null);
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const saveProgress = (newPoints: number, newEnergy: number) => {
+    localStorage.setItem('wasteless_points', newPoints.toString());
+    localStorage.setItem('wasteless_energy', newEnergy.toFixed(2));
+  };
+
   const getBinInfo = (category: string) => {
     const bins = {
-      recyclable: { color: '#4a90e2', emoji: '♻️', name: 'Blue Recycling Bin' },
-      organic: { color: '#27ae60', emoji: '🌱', name: 'Green Organic Bin' },
-      hazardous: { color: '#e74c3c', emoji: '⚠️', name: 'Red Hazmat Container' },
-      landfill: { color: '#7f8c8d', emoji: '🗑️', name: 'Black General Waste' },
+      recyclable: { color: '#2563eb', emoji: '♻️', name: 'Blue Recycling Bin', gradient: 'from-blue-500 to-blue-600' },
+      organic: { color: '#16a34a', emoji: '🌱', name: 'Green Organic Bin', gradient: 'from-green-500 to-green-600' },
+      hazardous: { color: '#dc2626', emoji: '⚠️', name: 'Red Hazmat Container', gradient: 'from-red-500 to-red-600' },
+      landfill: { color: '#6b7280', emoji: '🗑️', name: 'Black General Waste', gradient: 'from-gray-500 to-gray-600' },
     };
     return bins[category as keyof typeof bins] || bins.landfill;
   };
@@ -178,8 +204,7 @@ function App() {
         videoRef.current.srcObject = stream;
       }
     } catch (err) {
-      console.error('Camera error:', err);
-      alert('Camera access denied. Please allow camera access and try again.');
+      alert('Camera access denied');
       setScreen('home');
     }
   };
@@ -210,7 +235,7 @@ function App() {
       const identifiedItems = await identifyWaste(imageBase64);
       
       if (identifiedItems.length === 0) {
-        alert('No items detected. Please try again with better lighting.');
+        alert('No items detected. Try again.');
         setIsProcessing(false);
         setScreen('home');
         return;
@@ -218,10 +243,10 @@ function App() {
       
       setItems(identifiedItems);
       setCheckedItems({});
+      setSelectedItem(null);
       setScreen('results');
     } catch (error: any) {
-      alert(`Error: ${error.message}. Please try again.`);
-      console.error(error);
+      alert(`Error: ${error.message}`);
       setScreen('home');
     } finally {
       setIsProcessing(false);
@@ -229,35 +254,58 @@ function App() {
   };
 
   const toggleItem = (index: number) => {
-    setCheckedItems(prev => ({ ...prev, [index]: !prev[index] }));
+    const newChecked = { ...checkedItems, [index]: !checkedItems[index] };
+    setCheckedItems(newChecked);
+    
+    // Calculate energy saved
+    if (newChecked[index]) {
+      const item = items[index];
+      const energySaved = item.energySaved || 0;
+      const newTotal = totalEnergySaved + energySaved;
+      setTotalEnergySaved(newTotal);
+      saveProgress(points, newTotal);
+    }
   };
 
   const completeSort = () => {
     const checked = Object.values(checkedItems).filter(Boolean).length;
-    const earned = checked * 10;
-    setPoints(points + earned);
+    const earnedPoints = checked * 10;
+    const earnedEnergy = items
+      .filter((_, i) => checkedItems[i])
+      .reduce((sum, item) => sum + (item.energySaved || 0), 0);
     
-    const encouragement = earned >= 40 ? '🌟 Outstanding!' : earned >= 20 ? '🎉 Great work!' : '👍 Good start!';
-    alert(`${encouragement}\n\nYou earned ${earned} points for sorting ${checked} items!\n\nTotal Points: ${points + earned}\n\nKeep going to help Dubai achieve zero waste by 2030!`);
+    const newPoints = points + earnedPoints;
+    const newEnergy = totalEnergySaved + earnedEnergy;
+    
+    setPoints(newPoints);
+    setTotalEnergySaved(newEnergy);
+    saveProgress(newPoints, newEnergy);
+    
+    alert(`🌟 Amazing!\n\n+${earnedPoints} points\n+${earnedEnergy.toFixed(1)} kWh energy saved\n\nTotal: ${newPoints} points | ${newEnergy.toFixed(1)} kWh saved`);
     setScreen('home');
   };
 
   React.useEffect(() => {
-    if (screen === 'scanner') {
-      startCamera();
-    }
+    if (screen === 'scanner') startCamera();
     return () => stopCamera();
   }, [screen]);
+
+  // ANALYTICS SCREEN
+  if (screen === 'analytics') {
+    return <Analytics points={points} totalEnergySaved={totalEnergySaved} onBack={() => setScreen('home')} />;
+  }
 
   // LEADERBOARD SCREEN
   if (screen === 'leaderboard') {
     return (
-      <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
-        <div style={{ padding: '20px', background: 'white', borderBottom: '2px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: 'bold', color: '#2d5016', margin: 0 }}>WASTEless</h1>
-          <button onClick={() => setScreen('home')} style={{ background: '#e0e0e0', border: 'none', padding: '12px 24px', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', color: '#333', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = '#d0d0d0'} onMouseLeave={(e) => e.currentTarget.style.background = '#e0e0e0'}>
-            ← Back to Home
-          </button>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="bg-white shadow-sm border-b sticky top-0 z-10">
+          <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">WASTEless</h1>
+            <button onClick={() => setScreen('home')} className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold transition-all">
+              ← Back
+            </button>
+          </div>
         </div>
         <Leaderboard />
       </div>
@@ -267,41 +315,75 @@ function App() {
   // HOME SCREEN
   if (screen === 'home') {
     return (
-      <div style={{ minHeight: '100vh', background: '#f5f5f5', padding: '20px', display: 'flex', justifyContent: 'center' }}>
-        <div style={{ width: '100%', maxWidth: '600px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-            <h1 style={{ fontSize: '42px', fontWeight: 'bold', color: '#2d5016', margin: 0 }}>WASTEless</h1>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <button onClick={() => setScreen('leaderboard')} style={{ background: 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)', padding: '12px 20px', borderRadius: '25px', fontSize: '22px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)' }}>
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 px-4 py-6">
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">WASTEless</h1>
+              <p className="text-gray-600 text-sm mt-1">Dubai Smart Waste Initiative 🇦🇪</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setScreen('analytics')} className="px-5 py-2.5 bg-white hover:bg-gray-50 rounded-xl font-semibold shadow-md transition-all flex items-center gap-2">
+                📊 <span className="hidden sm:inline">Analytics</span>
+              </button>
+              <button onClick={() => setScreen('leaderboard')} className="px-5 py-2.5 bg-gradient-to-r from-yellow-400 to-amber-400 hover:from-yellow-500 hover:to-amber-500 rounded-xl font-bold shadow-lg transition-all">
                 ⭐ {points}
               </button>
             </div>
           </div>
 
-          <div style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)', padding: '32px', borderRadius: '20px', marginBottom: '30px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)' }}>
-            <h2 style={{ fontSize: '20px', color: '#666', marginBottom: '12px' }}>🇦🇪 Dubai Smart Waste Initiative</h2>
-            <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#2d5016', marginBottom: '8px' }}>Ready to sort!</p>
-            <p style={{ fontSize: '18px', color: '#999' }}>AI-powered waste identification • Earn points • Save the planet 🌱</p>
+          {/* Stats Card */}
+          <div className="bg-white rounded-3xl p-8 shadow-xl mb-6 border border-gray-100">
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <p className="text-gray-500 text-sm font-medium mb-1">Total Points</p>
+                <p className="text-4xl font-bold text-green-600">{points}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-sm font-medium mb-1">Energy Saved</p>
+                <p className="text-4xl font-bold text-blue-600">{totalEnergySaved.toFixed(1)} <span className="text-2xl">kWh</span></p>
+              </div>
+            </div>
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <p className="text-sm text-gray-600">
+                <span className="font-semibold text-green-600">{totalEnergySaved.toFixed(1)} kWh</span> = enough energy to power a laptop for <span className="font-semibold">{(totalEnergySaved * 25).toFixed(0)} hours</span> [web:88]
+              </p>
+            </div>
           </div>
 
-          <button onClick={() => setScreen('scanner')} style={{ width: '100%', padding: '22px', border: 'none', borderRadius: '18px', fontSize: '24px', fontWeight: 'bold', cursor: 'pointer', background: 'linear-gradient(135deg, #2d5016 0%, #3d6b1f 100%)', color: 'white', marginBottom: '16px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-            📸 SCAN WASTE
+          {/* Scan Button */}
+          <button onClick={() => setScreen('scanner')} className="w-full py-6 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-2xl text-2xl font-bold shadow-2xl transition-all transform hover:scale-[1.02] mb-4">
+            📸 SCAN WASTE NOW
           </button>
 
-          <div style={{ background: '#fff', padding: '20px', borderRadius: '16px', marginTop: '20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' }}>
-            <p style={{ color: '#2d5016', fontSize: '18px', fontWeight: 'bold', marginBottom: '12px' }}>💡 How it works:</p>
-            <ol style={{ marginLeft: '20px', lineHeight: '1.8', color: '#666' }}>
-              <li>📸 <strong>Scan</strong> your waste pile with your camera</li>
-              <li>🤖 <strong>AI analyzes</strong> each item in real-time</li>
-              <li>♻️ <strong>Follow</strong> Dubai-specific sorting instructions</li>
-              <li>✅ <strong>Mark completed</strong> as you sort each item</li>
-              <li>⭐ <strong>Earn points</strong> - 10 points per item sorted!</li>
+          {/* How it Works */}
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            <p className="font-bold text-lg text-gray-800 mb-4">💡 How it works:</p>
+            <ol className="space-y-3 text-gray-700">
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-7 h-7 bg-green-100 rounded-full flex items-center justify-center font-bold text-green-700 text-sm">1</span>
+                <span><strong>Scan</strong> your waste with your camera</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-7 h-7 bg-green-100 rounded-full flex items-center justify-center font-bold text-green-700 text-sm">2</span>
+                <span><strong>AI analyzes</strong> each item instantly</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-7 h-7 bg-green-100 rounded-full flex items-center justify-center font-bold text-green-700 text-sm">3</span>
+                <span><strong>Follow</strong> Dubai-specific sorting instructions</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-7 h-7 bg-green-100 rounded-full flex items-center justify-center font-bold text-green-700 text-sm">4</span>
+                <span><strong>Earn points</strong> + track energy saved!</span>
+              </li>
             </ol>
           </div>
 
-          <div style={{ background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)', padding: '20px', borderRadius: '16px', marginTop: '16px', border: '2px solid #2196f3' }}>
-            <p style={{ fontSize: '14px', color: '#0d47a1', lineHeight: '1.6', margin: 0 }}>
-              🎯 <strong>Dubai 2030 Goal:</strong> Zero waste to landfill. Every item you sort correctly brings us closer to a sustainable future!
+          {/* Impact Banner */}
+          <div className="mt-4 bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-2xl p-5">
+            <p className="text-sm text-blue-900 leading-relaxed">
+              🎯 <strong>Dubai 2030 Goal:</strong> Zero waste to landfill. Recycling aluminum saves <strong>95% energy</strong> [web:93] • Glass saves <strong>30%</strong> [web:89] • Paper saves <strong>40-70%</strong> [web:96]
             </p>
           </div>
         </div>
@@ -312,31 +394,31 @@ function App() {
   // SCANNER SCREEN
   if (screen === 'scanner') {
     return (
-      <div style={{ position: 'relative', width: '100vw', height: '100vh', background: 'black' }}>
-        <button onClick={() => { stopCamera(); setScreen('home'); }} style={{ position: 'fixed', top: '30px', right: '30px', width: '50px', height: '50px', borderRadius: '50%', background: 'rgba(0, 0, 0, 0.7)', color: 'white', border: 'none', fontSize: '28px', cursor: 'pointer', zIndex: 10, backdropFilter: 'blur(10px)' }}>
+      <div className="relative w-screen h-screen bg-black">
+        <button onClick={() => { stopCamera(); setScreen('home'); }} className="fixed top-6 right-6 w-14 h-14 rounded-full bg-black/70 backdrop-blur-md text-white text-2xl z-20 hover:bg-black/90 transition-all">
           ✕
         </button>
 
-        <video ref={videoRef} autoPlay playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
 
-        <div style={{ position: 'absolute', top: '80px', left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-          <p style={{ color: 'white', fontSize: '22px', fontWeight: 'bold', background: 'rgba(0, 0, 0, 0.7)', padding: '16px 28px', borderRadius: '12px', backdropFilter: 'blur(10px)' }}>
+        <div className="absolute top-20 left-0 right-0 flex flex-col items-center gap-3 px-4">
+          <p className="text-white text-xl font-bold bg-black/70 backdrop-blur-md px-8 py-4 rounded-2xl">
             📸 Point camera at waste items
           </p>
-          <p style={{ color: 'white', fontSize: '16px', background: 'rgba(0, 0, 0, 0.6)', padding: '8px 16px', borderRadius: '8px' }}>
+          <p className="text-white text-sm bg-black/60 backdrop-blur-md px-6 py-2 rounded-xl">
             Make sure items are clearly visible
           </p>
         </div>
 
         {isProcessing ? (
-          <div style={{ position: 'fixed', bottom: '50px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', color: 'white', background: 'rgba(0, 0, 0, 0.8)', padding: '24px 32px', borderRadius: '16px', backdropFilter: 'blur(10px)' }}>
-            <div style={{ width: '50px', height: '50px', border: '5px solid rgba(255, 255, 255, 0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
-            <p style={{ fontSize: '18px', fontWeight: 'bold' }}>🤖 AI is analyzing...</p>
-            <p style={{ fontSize: '14px', marginTop: '8px', color: '#aaa' }}>This may take 5-10 seconds</p>
+          <div className="fixed bottom-12 left-1/2 -translate-x-1/2 text-center text-white bg-black/80 backdrop-blur-md px-8 py-6 rounded-2xl">
+            <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-lg font-bold">🤖 AI is analyzing...</p>
+            <p className="text-sm text-gray-300 mt-2">This may take 5-10 seconds</p>
           </div>
         ) : (
-          <button onClick={captureImage} style={{ position: 'fixed', bottom: '50px', left: '50%', transform: 'translateX(-50%)', width: '90px', height: '90px', borderRadius: '50%', background: 'white', border: '5px solid rgba(255, 255, 255, 0.3)', cursor: 'pointer', padding: 0, transition: 'transform 0.2s' }} onMouseDown={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(0.95)'} onMouseUp={(e) => e.currentTarget.style.transform = 'translateX(-50%) scale(1)'}>
-            <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: '#2d5016', margin: '5px' }} />
+          <button onClick={captureImage} className="fixed bottom-12 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full bg-white border-4 border-white/30 p-2 hover:scale-95 transition-transform">
+            <div className="w-full h-full rounded-full bg-green-600" />
           </button>
         )}
       </div>
@@ -345,59 +427,86 @@ function App() {
 
   // RESULTS SCREEN
   const checkedCount = Object.values(checkedItems).filter(Boolean).length;
+  const selectedItemData = selectedItem !== null ? items[selectedItem] : null;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f5f5', padding: '20px' }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        <button onClick={() => setScreen('home')} style={{ background: '#e0e0e0', border: 'none', padding: '12px 20px', borderRadius: '12px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '20px', color: '#333', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = '#d0d0d0'} onMouseLeave={(e) => e.currentTarget.style.background = '#e0e0e0'}>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-32">
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        <button onClick={() => setScreen('home')} className="mb-6 px-6 py-3 bg-white hover:bg-gray-50 rounded-xl font-semibold shadow-md transition-all">
           ← Back to Home
         </button>
 
-        <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: '#2d5016', marginBottom: '8px' }}>✅ Items Found: {items.length}</h2>
-        <p style={{ fontSize: '18px', color: '#666', marginBottom: '28px' }}>Tap each card after you sort the item correctly</p>
+        <div className="mb-8">
+          <h2 className="text-4xl font-bold text-gray-800 mb-2">✅ Items Found: {items.length}</h2>
+          <p className="text-gray-600 text-lg">Click any card for detailed instructions</p>
+        </div>
 
-        <div style={{ marginBottom: '20px' }}>
+        <div className="space-y-4 mb-6">
           {items.map((item, index) => {
             const binInfo = getBinInfo(item.category);
             const isChecked = checkedItems[index];
             
             return (
-              <div key={index} onClick={() => toggleItem(index)} style={{ background: isChecked ? 'linear-gradient(135deg, #e8f5e9 0%, #f1f8f4 100%)' : 'white', padding: '24px', borderRadius: '20px', marginBottom: '16px', boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)', cursor: 'pointer', border: isChecked ? '3px solid #27ae60' : '3px solid transparent', transition: 'all 0.3s', transform: 'scale(1)' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '15px', color: '#999', fontWeight: 'bold' }}>#{index + 1}</span>
-                  {isChecked && <span style={{ fontSize: '32px', color: '#27ae60' }}>✓</span>}
+              <div key={index} className={`bg-white rounded-2xl p-6 shadow-lg border-2 transition-all cursor-pointer hover:shadow-xl ${isChecked ? 'border-green-500 bg-green-50' : 'border-gray-200'} ${selectedItem === index ? 'ring-4 ring-blue-300' : ''}`}>
+                <div className="flex items-start gap-4">
+                  {/* Checkbox */}
+                  <button onClick={(e) => { e.stopPropagation(); toggleItem(index); }} className={`flex-shrink-0 w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all ${isChecked ? 'bg-green-500 border-green-500' : 'bg-white border-gray-300 hover:border-green-400'}`}>
+                    {isChecked && <span className="text-white text-2xl">✓</span>}
+                  </button>
+
+                  {/* Content */}
+                  <div className="flex-1" onClick={() => setSelectedItem(selectedItem === index ? null : index)}>
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="text-xl font-bold text-gray-900">{item.name}</h3>
+                      <span className="text-sm text-gray-500 font-medium">#{index + 1}</span>
+                    </div>
+
+                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r ${binInfo.gradient} text-white font-semibold mb-3`}>
+                      <span className="text-xl">{binInfo.emoji}</span>
+                      <span>{binInfo.name}</span>
+                    </div>
+
+                    {selectedItem === index && (
+                      <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+                        <p className="text-gray-800 leading-relaxed mb-3">
+                          <span className="font-semibold text-blue-900">💡 Instructions:</span> {item.instruction}
+                        </p>
+                        <div className="flex items-center gap-2 text-sm text-blue-900 font-semibold">
+                          <span>⚡ Energy saved:</span>
+                          <span className="px-3 py-1 bg-yellow-100 rounded-full">{item.energySaved?.toFixed(1)} kWh</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                
-                <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#333', marginBottom: '16px' }}>{item.name}</h3>
-                
-                <div style={{ display: 'flex', alignItems: 'center', padding: '14px', borderRadius: '12px', marginBottom: '16px', background: binInfo.color, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}>
-                  <span style={{ fontSize: '28px', marginRight: '12px' }}>{binInfo.emoji}</span>
-                  <span style={{ color: 'white', fontSize: '18px', fontWeight: 'bold' }}>{binInfo.name}</span>
-                </div>
-                
-                <p style={{ fontSize: '15px', color: '#666', lineHeight: '1.6', padding: '14px', background: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-                  💡 <strong>Instructions:</strong> {item.instruction}
-                </p>
               </div>
             );
           })}
         </div>
 
-        <div style={{ position: 'sticky', bottom: '20px', background: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.1)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '16px', color: '#666' }}>Progress: {checkedCount}/{items.length} items sorted</span>
-            <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#2d5016' }}>+{checkedCount * 10} points</span>
+        {/* Bottom Action Bar */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-2xl p-6 z-10">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <p className="text-gray-600 text-sm">Progress</p>
+                <p className="text-2xl font-bold text-gray-900">{checkedCount}/{items.length} sorted</p>
+              </div>
+              <div className="text-right">
+                <p className="text-gray-600 text-sm">You'll earn</p>
+                <p className="text-2xl font-bold text-green-600">+{checkedCount * 10} pts</p>
+              </div>
+            </div>
+            <button onClick={completeSort} disabled={checkedCount === 0} className={`w-full py-4 rounded-xl text-xl font-bold transition-all ${checkedCount === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 shadow-lg'}`}>
+              {checkedCount === 0 ? 'Check items to continue' : '✓ Complete Sorting'}
+            </button>
           </div>
-          <button onClick={completeSort} disabled={checkedCount === 0} style={{ width: '100%', padding: '18px', border: 'none', borderRadius: '14px', fontSize: '20px', fontWeight: 'bold', cursor: checkedCount === 0 ? 'not-allowed' : 'pointer', background: checkedCount === 0 ? '#ccc' : 'linear-gradient(135deg, #2d5016 0%, #3d6b1f 100%)', color: 'white', transition: 'all 0.2s' }}>
-            ✓ Complete Sorting
-          </button>
         </div>
       </div>
     </div>
   );
 }
 
-// Render
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
