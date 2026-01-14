@@ -7,161 +7,126 @@ interface AnalyticsProps {
 }
 
 const Analytics: React.FC<AnalyticsProps> = ({ points, totalEnergySaved, onBack }) => {
-  // Calculate equivalent metrics [web:88][web:89][web:96]
-  const laptopHours = (totalEnergySaved * 25).toFixed(0); // 10 bottles = 25 hours
-  const homesPerYear = (totalEnergySaved / 4100).toFixed(2); // 4100 kWh per year average home
-  const co2Saved = (totalEnergySaved * 0.4).toFixed(1); // ~0.4 kg CO2 per kWh
-  const treesPlanted = (parseFloat(co2Saved) / 21).toFixed(1); // 21 kg CO2 per tree per year
+  const laptopHours = (totalEnergySaved * 25).toFixed(0);
+  const homesPerYear = (totalEnergySaved / 4100).toFixed(2);
+  const co2Saved = (totalEnergySaved * 0.4).toFixed(1);
+  const treesPlanted = (parseFloat(co2Saved) / 21).toFixed(1);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)' }}>
       {/* Header */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+      <div style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', borderBottom: '1px solid #e5e7eb', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Energy Analytics</h1>
-            <p className="text-gray-600 text-sm mt-1">Your environmental impact dashboard</p>
+            <h1 style={{ fontSize: '32px', fontWeight: 'bold', background: 'linear-gradient(135deg, #059669 0%, #20593a 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>Energy Analytics</h1>
+            <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>Your environmental impact dashboard</p>
           </div>
-          <button onClick={onBack} className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold transition-all">
+          <button onClick={onBack} style={{ padding: '10px 24px', background: '#f3f4f6', border: 'none', borderRadius: '12px', fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.background = '#e5e7eb'} onMouseLeave={(e) => e.currentTarget.style.background = '#f3f4f6'}>
             ← Back
           </button>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        {/* Main Stats Grid */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Total Energy Saved */}
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl p-8 text-white shadow-2xl">
-            <p className="text-blue-100 text-sm font-medium mb-2">Total Energy Saved</p>
-            <p className="text-6xl font-bold mb-2">{totalEnergySaved.toFixed(1)}</p>
-            <p className="text-2xl text-blue-100">kilowatt-hours (kWh)</p>
-            <div className="mt-6 pt-6 border-t border-blue-400">
-              <p className="text-blue-100 text-sm">That's enough to power:</p>
-              <p className="text-xl font-bold mt-1">💻 A laptop for {laptopHours} hours</p>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
+        {/* Main Stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+          <div style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', borderRadius: '24px', padding: '32px', color: 'white', boxShadow: '0 20px 25px -5px rgba(59,130,246,0.3)' }}>
+            <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', fontWeight: 500, marginBottom: '8px' }}>Total Energy Saved</p>
+            <p style={{ fontSize: '56px', fontWeight: 'bold', margin: '8px 0', lineHeight: 1 }}>{totalEnergySaved.toFixed(1)}</p>
+            <p style={{ fontSize: '24px', color: 'rgba(255,255,255,0.9)' }}>kilowatt-hours (kWh)</p>
+            <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.3)' }}>
+              <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', marginBottom: '8px' }}>That's enough to power:</p>
+              <p style={{ fontSize: '20px', fontWeight: 'bold' }}>💻 A laptop for {laptopHours} hours</p>
             </div>
           </div>
 
-          {/* Total Points */}
-          <div className="bg-gradient-to-br from-amber-400 to-yellow-500 rounded-3xl p-8 text-white shadow-2xl">
-            <p className="text-amber-100 text-sm font-medium mb-2">Total Points Earned</p>
-            <p className="text-6xl font-bold mb-2">{points}</p>
-            <p className="text-2xl text-amber-100">reward points</p>
-            <div className="mt-6 pt-6 border-t border-amber-300">
-              <p className="text-amber-100 text-sm">Items sorted correctly:</p>
-              <p className="text-xl font-bold mt-1">♻️ {(points / 10).toFixed(0)} items</p>
+          <div style={{ background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)', borderRadius: '24px', padding: '32px', color: 'white', boxShadow: '0 20px 25px -5px rgba(251,191,36,0.3)' }}>
+            <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', fontWeight: 500, marginBottom: '8px' }}>Total Points Earned</p>
+            <p style={{ fontSize: '56px', fontWeight: 'bold', margin: '8px 0', lineHeight: 1 }}>{points}</p>
+            <p style={{ fontSize: '24px', color: 'rgba(255,255,255,0.9)' }}>reward points</p>
+            <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid rgba(255,255,255,0.3)' }}>
+              <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', marginBottom: '8px' }}>Items sorted correctly:</p>
+              <p style={{ fontSize: '20px', fontWeight: 'bold' }}>♻️ {(points / 10).toFixed(0)} items</p>
             </div>
           </div>
         </div>
 
-        {/* Environmental Impact Grid */}
-        <div className="bg-white rounded-3xl p-8 shadow-xl mb-8">
-          <h3 className="text-2xl font-bold text-gray-800 mb-6">🌍 Environmental Impact</h3>
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="text-center p-6 bg-green-50 rounded-2xl">
-              <p className="text-5xl mb-3">🌳</p>
-              <p className="text-3xl font-bold text-green-700">{treesPlanted}</p>
-              <p className="text-gray-600 font-medium mt-2">Trees Equivalent</p>
-              <p className="text-sm text-gray-500 mt-1">CO₂ absorption per year</p>
+        {/* Environmental Impact */}
+        <div style={{ background: 'white', borderRadius: '24px', padding: '32px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', marginBottom: '32px' }}>
+          <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', marginBottom: '24px' }}>🌍 Environmental Impact</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px' }}>
+            <div style={{ textAlign: 'center', padding: '24px', background: '#ecfdf5', borderRadius: '20px' }}>
+              <p style={{ fontSize: '48px', marginBottom: '12px' }}>🌳</p>
+              <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#059669', margin: '8px 0' }}>{treesPlanted}</p>
+              <p style={{ color: '#6b7280', fontWeight: 500, marginTop: '8px' }}>Trees Equivalent</p>
+              <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>CO₂ absorption/year</p>
             </div>
 
-            <div className="text-center p-6 bg-blue-50 rounded-2xl">
-              <p className="text-5xl mb-3">💨</p>
-              <p className="text-3xl font-bold text-blue-700">{co2Saved} kg</p>
-              <p className="text-gray-600 font-medium mt-2">CO₂ Prevented</p>
-              <p className="text-sm text-gray-500 mt-1">Carbon emissions avoided</p>
+            <div style={{ textAlign: 'center', padding: '24px', background: '#dbeafe', borderRadius: '20px' }}>
+              <p style={{ fontSize: '48px', marginBottom: '12px' }}>💨</p>
+              <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#2563eb', margin: '8px 0' }}>{co2Saved} kg</p>
+              <p style={{ color: '#6b7280', fontWeight: 500, marginTop: '8px' }}>CO₂ Prevented</p>
+              <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>Emissions avoided</p>
             </div>
 
-            <div className="text-center p-6 bg-purple-50 rounded-2xl">
-              <p className="text-5xl mb-3">🏠</p>
-              <p className="text-3xl font-bold text-purple-700">{homesPerYear}</p>
-              <p className="text-gray-600 font-medium mt-2">Homes/Year</p>
-              <p className="text-sm text-gray-500 mt-1">Annual energy equivalent</p>
+            <div style={{ textAlign: 'center', padding: '24px', background: '#f3e8ff', borderRadius: '20px' }}>
+              <p style={{ fontSize: '48px', marginBottom: '12px' }}>🏠</p>
+              <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#9333ea', margin: '8px 0' }}>{homesPerYear}</p>
+              <p style={{ color: '#6b7280', fontWeight: 500, marginTop: '8px' }}>Homes/Year</p>
+              <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>Annual energy equivalent</p>
             </div>
           </div>
         </div>
 
-        {/* Energy Savings by Material */}
-        <div className="bg-white rounded-3xl p-8 shadow-xl mb-8">
-          <h3 className="text-2xl font-bold text-gray-800 mb-6">⚡ Energy Savings by Material</h3>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gray-200 rounded-xl flex items-center justify-center text-2xl">🥫</div>
-              <div className="flex-1">
-                <p className="font-bold text-gray-800">Aluminum Cans</p>
-                <p className="text-sm text-gray-600">Saves 95% energy vs. new production</p>
+        {/* Energy by Material */}
+        <div style={{ background: 'white', borderRadius: '24px', padding: '32px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', marginBottom: '32px' }}>
+          <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937', marginBottom: '24px' }}>⚡ Energy Savings by Material</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {[
+              { icon: '🥫', name: 'Aluminum Cans', desc: 'Saves 95% energy vs. new', value: '14.0', color: '#6b7280' },
+              { icon: '🧴', name: 'Plastic Bottles', desc: '10 bottles = 25 hours laptop', value: '5.6', color: '#2563eb' },
+              { icon: '📄', name: 'Paper & Cardboard', desc: '1 ton = power home 6 months', value: '4.1', color: '#f59e0b' },
+              { icon: '🍺', name: 'Glass Bottles', desc: '100% recyclable infinitely', value: '0.3', color: '#059669' }
+            ].map((material, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', background: '#f9fafb', borderRadius: '16px' }}>
+                <div style={{ width: '64px', height: '64px', background: material.icon === '🥫' ? '#e5e7eb' : material.icon === '🧴' ? '#dbeafe' : material.icon === '📄' ? '#fef3c7' : '#d1fae5', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', flexShrink: 0 }}>
+                  {material.icon}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontWeight: 'bold', color: '#1f2937', marginBottom: '4px' }}>{material.name}</p>
+                  <p style={{ fontSize: '14px', color: '#6b7280' }}>{material.desc}</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ fontSize: '28px', fontWeight: 'bold', color: material.color, margin: 0 }}>{material.value}</p>
+                  <p style={{ fontSize: '12px', color: '#9ca3af' }}>kWh/kg</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-green-600">14.0</p>
-                <p className="text-sm text-gray-500">kWh/kg</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center text-2xl">🧴</div>
-              <div className="flex-1">
-                <p className="font-bold text-gray-800">Plastic Bottles</p>
-                <p className="text-sm text-gray-600">10 bottles = 25 hours laptop power</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-blue-600">5.6</p>
-                <p className="text-sm text-gray-500">kWh/kg</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-amber-100 rounded-xl flex items-center justify-center text-2xl">📄</div>
-              <div className="flex-1">
-                <p className="font-bold text-gray-800">Paper & Cardboard</p>
-                <p className="text-sm text-gray-600">1 ton = power home for 6 months</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-amber-600">4.1</p>
-                <p className="text-sm text-gray-500">kWh/kg</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center text-2xl">🍺</div>
-              <div className="flex-1">
-                <p className="font-bold text-gray-800">Glass Bottles</p>
-                <p className="text-sm text-gray-600">100% recyclable indefinitely</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-green-600">0.3</p>
-                <p className="text-sm text-gray-500">kWh/kg</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* Dubai Impact Banner */}
-        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-3xl p-8 text-white shadow-2xl">
-          <h3 className="text-2xl font-bold mb-4">🇦🇪 Contributing to Dubai's 2030 Goals</h3>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <p className="text-emerald-100 text-sm mb-2">Sharjah Waste-to-Energy Plant</p>
-              <p className="text-xl font-bold">Powers 28,000 homes [web:97]</p>
-            </div>
-            <div>
-              <p className="text-emerald-100 text-sm mb-2">Annual CO₂ Reduction</p>
-              <p className="text-xl font-bold">450,000 tonnes displaced [web:97]</p>
-            </div>
-            <div>
-              <p className="text-emerald-100 text-sm mb-2">Sharjah Landfill Diversion</p>
-              <p className="text-xl font-bold">90% diversion rate [web:94]</p>
-            </div>
-            <div>
-              <p className="text-emerald-100 text-sm mb-2">Your Contribution</p>
-              <p className="text-xl font-bold">{(points / 10).toFixed(0)} items diverted</p>
-            </div>
+        {/* Dubai Impact */}
+        <div style={{ background: 'linear-gradient(135deg, #20593a 0%, #059669 100%)', borderRadius: '24px', padding: '32px', color: 'white', boxShadow: '0 20px 25px -5px rgba(16,185,129,0.3)' }}>
+          <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>🇦🇪 Dubai 2030 Impact</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px' }}>
+            {[
+              { label: 'Sharjah WtE Plant', value: 'Powers 28,000 homes' },
+              { label: 'CO₂ Reduction', value: '450,000 tonnes/year' },
+              { label: 'Landfill Diversion', value: '90% diversion rate' },
+              { label: 'Your Contribution', value: `${(points / 10).toFixed(0)} items diverted` }
+            ].map((stat, idx) => (
+              <div key={idx}>
+                <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', marginBottom: '8px' }}>{stat.label}</p>
+                <p style={{ fontSize: '18px', fontWeight: 'bold' }}>{stat.value}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Data Sources */}
-        <div className="mt-8 p-6 bg-gray-100 rounded-2xl">
-          <p className="text-xs text-gray-600 leading-relaxed">
-            📊 <strong>Data Sources:</strong> US EPA Recycling Basics [web:88] • WasteTrade Energy Conservation [web:89] • International Aluminium Institute [web:93] • Recycling Today Paper Stats [web:96] • UAE Waste-to-Energy Projects [web:94][web:97]
+        {/* Sources */}
+        <div style={{ marginTop: '32px', padding: '24px', background: '#f3f4f6', borderRadius: '20px' }}>
+          <p style={{ fontSize: '12px', color: '#6b7280', lineHeight: 1.6, margin: 0 }}>
+            📊 <strong>Data Sources:</strong> US EPA • WasteTrade • Int'l Aluminium Institute • UAE Waste-to-Energy Projects
           </p>
         </div>
       </div>
