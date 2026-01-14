@@ -125,13 +125,19 @@ const Leaderboard: React.FC = () => {
               animationDelay: `${index * 0.05}s`,
             }}
           >
-            <div className="item-rank" style={{ color: getRankColor(user.rank) }}>
-              #{user.rank}
+            <div className="item-rank-stack">
+              <div className="item-rank" style={{ color: getRankColor(user.rank) }}>
+                #{user.rank}
+              </div>
+              <div className="item-badge">{user.badge}</div>
+              <div
+                className="item-avatar"
+                style={{ background: getRankGradient(user.rank) }}
+              >
+                {user.username.charAt(0).toUpperCase()}
+              </div>
             </div>
-            <div className="item-badge">{user.badge}</div>
-            <div className="item-avatar" style={{ background: getRankGradient(user.rank) }}>
-              {user.username.charAt(0).toUpperCase()}
-            </div>
+
             <div className="item-info">
               <div className="item-username">{user.username}</div>
               <div className="item-stats">

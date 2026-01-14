@@ -503,47 +503,33 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .leaderboard-title {
-    font-size: 36px;
-  }
-
-  .podium-container {
-    gap: 12px;
-    padding: 16px;
-  }
-
-  .podium-avatar {
-    width: 60px;
-    height: 60px;
-    font-size: 24px;
-  }
-
-  .podium-name {
-    font-size: 14px;
-    max-width: 80px;
-  }
-
   .leaderboard-item {
-    padding: 16px;
-    gap: 12px;
+    align-items: flex-start;
   }
 
-  .item-avatar {
-    width: 48px;
-    height: 48px;
-    font-size: 20px;
+  .item-rank-stack {
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 72px;
+  }
+
+  .item-info {
+    width: 100%;
   }
 
   .item-username {
-    font-size: 16px;
+    white-space: normal;
   }
 
-  .item-stats {
-    font-size: 12px;
-    gap: 8px;
+  .item-stars {
+    justify-content: flex-end;
+    min-width: 80px;
   }
+}
 
-  .stats-summary {
-    grid-template-columns: 1fr;
-  }
+.item-rank-stack {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
